@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true">
+
+    <ViewFlipper
+        android:id="@+id/flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="100" />
+
+    <TextView
+        android:id="@+id/message"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="@string/widget_loading"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="6dp"
+        android:background="#99FFFFFF"
+        android:paddingHorizontal="4dp"
+        android:text="@string/widget_outdated"
+        android:contentDescription="@string/widget_outdated_description"
+        android:textColor="#172229"
+        android:textSize="11sp"
+        android:visibility="gone" />
+</FrameLayout>

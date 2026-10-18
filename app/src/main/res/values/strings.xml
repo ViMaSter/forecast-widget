@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">Forecast</string>
+    <string name="widget_description">Animated rain radar for your current location, refreshed every 5 minutes.</string>
+    <string name="widget_loading">Loading forecast…</string>
+    <string name="widget_outdated" translatable="false">⚠</string>
+    <string name="widget_outdated_description">Last refresh failed, showing older forecast</string>
+    <string name="error_no_location">No location yet – open the app to set up</string>
+    <string name="error_refresh">Refresh failed: %1$s</string>
+
+    <string name="setup_title">Forecast widget setup</string>
+    <string name="setup_intro">Complete these steps once. Afterwards the widget refreshes every 5 minutes in the background without further interaction.</string>
+    <string name="step_done">✅</string>
+    <string name="step_todo">⬜</string>
+    <string name="step_location_title">Location</string>
+    <string name="step_location_desc">Used to centre the radar map on where you are.</string>
+    <string name="step_background_location_title">Location “Allow all the time”</string>
+    <string name="step_background_location_desc">Lets the widget follow you while the app is closed.</string>
+    <string name="step_exact_alarm_title">Alarms &amp; reminders</string>
+    <string name="step_exact_alarm_desc">Required for the exact 5-minute refresh. Without it Android may delay refreshes to roughly every 9 minutes or longer.</string>
+    <string name="step_battery_title">Battery: unrestricted</string>
+    <string name="step_battery_desc">Allows network access while the phone is idle. In the list, switch to “All apps”, choose Forecast and select “Don’t optimize”. Some manufacturers (Samsung, Xiaomi, Huawei, …) additionally require allowing autostart / removing the app from “sleeping apps”.</string>
+    <string name="step_widget_title">Home-screen widget</string>
+    <string name="step_widget_desc">Larger widgets show a wider area (2×2 → zoom 100, 3×3 → 75, 4×4 → 50, …).</string>
+    <string name="action_grant">Grant</string>
+    <string name="action_open_settings">Open settings</string>
+    <string name="action_add_widget">Add widget</string>
+    <string name="action_refresh">Refresh now</string>
+    <string name="status_title">Status</string>
+    <string name="status_template">Widgets: %1$d\nLast update: %2$s\nNext refresh: %3$s\nLast error: %4$s\nPosition: %5$s</string>
+    <string name="status_never">–</string>
+    <string name="status_no_error">none</string>
+    <string name="status_refreshing">Refreshing…</string>
+
+    <string name="disclosure_title">Background location</string>
+    <string name="disclosure_message">Forecast collects your location data to show the rain radar for your current position in the home-screen widget, even when the app is closed or not in use. Your coordinates are only sent to forecast.by.vincent.mahn.ke to render the map and are not shared otherwise.\n\nOn the next screen choose “Allow all the time”.</string>
+    <string name="disclosure_accept">Continue</string>
+    <string name="disclosure_decline">Not now</string>
+</resources>
