@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.delay
+import java.io.IOException
 
 class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -64,7 +65,12 @@ class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             if (result is FetchResult.Video) usage.record(result.bytes.size.toLong(), zoom)
         }
         if (result is FetchResult.Video) {
-            store.saveVideo(zoom, result.bytes)
+            val video = result
+            val footer = if (video.footerless) {
+                val start = video.start ?: throw IOException("Footerless forecast without X-Forecast-Start")
+                start to (video.end ?: start)
+            } else null
+            store.saveVideo(zoom, video.bytes, footer)
             prefs.setEtag(zoom, url, result.etag)
         }
     }

@@ -45,7 +45,7 @@ object ForecastConfig {
 
     fun forecastUrl(latitude: Double, longitude: Double, zoom: Int, dark: Boolean = false): String =
         String.format(
-            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=%s",
+            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=%s&noFooter=1",
             BASE_URL, longitude, latitude, zoom, if (dark) "dark" else "light",
         )
 

@@ -16,8 +16,11 @@ class FrameStore(context: Context) {
     private val appContext = context.applicationContext
     private val root = rootDir(appContext)
 
-    /** Decodes every frame of the forecast MP4 (AV1) with the platform's media decoders. */
-    fun saveVideo(zoom: Int, video: ByteArray): Int {
+    /**
+     * Decodes every frame of the forecast MP4 (AV1) with the platform's media decoders.
+     * With [footerRange] (epoch ms of the first and last frame) the time box is drawn onto each frame.
+     */
+    fun saveVideo(zoom: Int, video: ByteArray, footerRange: Pair<Long, Long>? = null): Int {
         val videoFile = File.createTempFile("forecast", ".mp4", appContext.cacheDir)
         val retriever = MediaMetadataRetriever()
         try {
@@ -25,13 +28,20 @@ class FrameStore(context: Context) {
             retriever.setDataSource(videoFile.path)
             val frameCount = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)
                 ?.toIntOrNull()?.takeIf { it > 0 } ?: throw IOException("Video has no frames")
+            val timeline = footerRange?.let { FrameTimeline(it.first, it.second, frameCount) }
+            val footer = timeline?.let { ForecastFooter() }
             return publishFrames(zoom) { tmpDir ->
                 // Decoding in small batches is sequential (fast) without holding every bitmap at once.
                 for (start in 0 until frameCount step VIDEO_DECODE_BATCH) {
                     val count = minOf(VIDEO_DECODE_BATCH, frameCount - start)
-                    retriever.getFramesAtIndex(start, count).forEachIndexed { offset, frame ->
-                        writeFrame(tmpDir, start + offset, frame)
-                        frame.recycle()
+                    retriever.getFramesAtIndex(start, count).forEachIndexed { offset, decoded ->
+                        val index = start + offset
+                        val frame = if (timeline != null && footer != null) {
+                            footer.draw(decoded, timeline.timeAt(index), timeline.progressAt(index))
+                        } else decoded
+                        writeFrame(tmpDir, index, frame)
+                        if (frame !== decoded) frame.recycle()
+                        decoded.recycle()
                     }
                 }
                 frameCount

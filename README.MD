@@ -60,9 +60,12 @@ How a refresh happens:
 3. The worker:
    - gets the location. Background location is throttled to a few fixes per hour, so it falls back
      to the last known and then the last stored position.
-   - downloads the forecast for each zoom in use as an AV1 MP4 (~50 KB), with an
-     `If-None-Match` ETag.
-   - decodes the 91 frames (one per minute) to PNG with `MediaMetadataRetriever` and updates all widgets.
+   - downloads the forecast for each zoom in use as an AV1 MP4 (roughly 5–40 KB), with an
+     `If-None-Match` ETag. It requests `noFooter=1`, so the server leaves out the time box: frames then only
+     change where rain moves, which roughly halves the download when there is little rain.
+   - decodes the 91 frames (one per minute) to PNG with `MediaMetadataRetriever` and draws the time box
+     onto each one. Frame `i` shows `start + i/90 × (end − start)` from the `X-Forecast-Start`/`-End`
+     headers in the device's time zone, with a progress bar from 0% to 100%. Then it updates all widgets.
    - records the size of every downloaded forecast. The app's **Data usage** section shows the last 5
      downloads, hourly totals for the past 24 hours and daily totals for the past 30 days. `304 Not Modified`
      responses carry no forecast and are not counted.

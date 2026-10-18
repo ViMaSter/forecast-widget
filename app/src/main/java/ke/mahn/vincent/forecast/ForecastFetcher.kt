@@ -3,11 +3,20 @@ package ke.mahn.vincent.forecast
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 sealed interface FetchResult {
     data object NotModified : FetchResult
-    class Video(val bytes: ByteArray, val etag: String?, val stale: Boolean) : FetchResult
+    /** [footerless] videos need the time box drawn by the app, using [start]/[end] (epoch ms) of the first/last frame. */
+    class Video(
+        val bytes: ByteArray,
+        val etag: String?,
+        val stale: Boolean,
+        val footerless: Boolean = false,
+        val start: Long? = null,
+        val end: Long? = null,
+    ) : FetchResult
 }
 
 class ForecastFetcher(
@@ -30,9 +39,14 @@ class ForecastFetcher(
                 bytes = response.body.bytes(),
                 etag = response.header("ETag"),
                 stale = response.header("x-forecast-stale") == "true",
+                footerless = response.header("x-forecast-no-footer") == "1",
+                start = response.header("x-forecast-start")?.let(::parseInstant),
+                end = response.header("x-forecast-end")?.let(::parseInstant),
             )
         }
     }
+
+    private fun parseInstant(value: String): Long? = runCatching { Instant.parse(value).toEpochMilli() }.getOrNull()
 
     companion object {
         // Generous read timeout: a request after a cache cutoff waits for server-side rendering.

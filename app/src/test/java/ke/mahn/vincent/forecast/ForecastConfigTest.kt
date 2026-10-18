@@ -39,11 +39,11 @@ class ForecastConfigTest {
     @Test
     fun forecastUrlPutsLongitudeInXAndLatitudeInY() {
         assertEquals(
-            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=100&theme=light",
+            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=100&theme=light&noFooter=1",
             ForecastConfig.forecastUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 100),
         )
         assertEquals(
-            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=50&theme=dark",
+            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=50&theme=dark&noFooter=1",
             ForecastConfig.forecastUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 50, dark = true),
         )
     }

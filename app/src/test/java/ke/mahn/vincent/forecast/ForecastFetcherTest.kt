@@ -53,6 +53,31 @@ class ForecastFetcherTest {
         assertFalse(result.stale)
     }
 
+    @Test
+    fun readsFooterlessTimeline() {
+        server.enqueue(
+            MockResponse.Builder()
+                .addHeader("Content-Type", "video/mp4")
+                .addHeader("X-Forecast-No-Footer", "1")
+                .addHeader("X-Forecast-Start", "2026-10-18T21:45:00.000Z")
+                .addHeader("X-Forecast-End", "2026-10-18T23:15:00.000Z")
+                .body("ftyp")
+                .build(),
+        )
+        val result = fetcher.fetch(server.url("/forecast").toString(), null) as FetchResult.Video
+        assertTrue(result.footerless)
+        assertEquals(1792359900000L, result.start)
+        assertEquals(1792365300000L, result.end)
+    }
+
+    @Test
+    fun footerIsServerRenderedByDefault() {
+        server.enqueue(MockResponse.Builder().addHeader("Content-Type", "video/mp4").body("ftyp").build())
+        val result = fetcher.fetch(server.url("/forecast").toString(), null) as FetchResult.Video
+        assertFalse(result.footerless)
+        assertEquals(null, result.start)
+    }
+
     @Test(expected = IOException::class)
     fun serverErrorThrows() {
         server.enqueue(MockResponse.Builder().code(502).build())
