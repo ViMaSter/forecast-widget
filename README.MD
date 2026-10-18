@@ -63,6 +63,9 @@ How a refresh happens:
    - downloads the forecast for each zoom in use as an AV1 MP4 (~50 KB), with an
      `If-None-Match` ETag.
    - decodes the 91 frames (one per minute) to PNG with `MediaMetadataRetriever` and updates all widgets.
+   - records the size of every downloaded forecast. The app's **Data usage** section shows the last 5
+     downloads, hourly totals for the past 24 hours and daily totals for the past 30 days. `304 Not Modified`
+     responses carry no forecast and are not counted.
 4. Safety nets:
    - A 15-minute periodic job re-arms the alarm chain if it broke.
    - The chain is re-armed after reboot, app update, time or timezone changes, and exact-alarm

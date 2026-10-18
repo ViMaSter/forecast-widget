@@ -27,10 +27,11 @@ class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Configuration.UI_MODE_NIGHT_YES
         val store = FrameStore(context)
         val fetcher = ForecastFetcher()
+        val usage = DataUsageLog.forContext(context)
         val errors = mutableListOf<String>()
         for (zoom in zooms) {
             try {
-                refreshZoom(prefs, store, fetcher, ForecastConfig.forecastUrl(position.first, position.second, zoom, dark), zoom)
+                refreshZoom(prefs, store, fetcher, usage, ForecastConfig.forecastUrl(position.first, position.second, zoom, dark), zoom)
             } catch (e: Exception) {
                 Log.w(TAG, "Refresh failed for zoom $zoom", e)
                 errors += e.message ?: e.javaClass.simpleName
@@ -50,13 +51,17 @@ class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         return Result.success()
     }
 
-    private suspend fun refreshZoom(prefs: Prefs, store: FrameStore, fetcher: ForecastFetcher, url: String, zoom: Int) {
+    private suspend fun refreshZoom(
+        prefs: Prefs, store: FrameStore, fetcher: ForecastFetcher, usage: DataUsageLog, url: String, zoom: Int,
+    ) {
         val etag = if (store.hasFrames(zoom)) prefs.etag(zoom, url) else null
         var result = fetcher.fetch(url, etag)
+        if (result is FetchResult.Video) usage.record(result.bytes.size.toLong(), zoom)
         if (result is FetchResult.Video && result.stale) {
             // Server is still rendering this interval; give it a moment and ask again.
             delay(STALE_RETRY_DELAY_MS)
             result = fetcher.fetch(url, null)
+            if (result is FetchResult.Video) usage.record(result.bytes.size.toLong(), zoom)
         }
         if (result is FetchResult.Video) {
             store.saveVideo(zoom, result.bytes)

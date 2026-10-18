@@ -31,6 +31,12 @@
     <string name="status_no_error">none</string>
     <string name="status_refreshing">Refreshing…</string>
 
+    <string name="usage_title">Data usage</string>
+    <string name="usage_recent">Last 5 downloads</string>
+    <string name="usage_hourly">Past 24 hours: %1$s</string>
+    <string name="usage_daily">Past 30 days: %1$s</string>
+    <string name="usage_none">No downloads recorded yet</string>
+
     <string name="disclosure_title">Background location</string>
     <string name="disclosure_message">Forecast collects your location data to show the rain radar for your current position in the home-screen widget, even when the app is closed or not in use. Your coordinates are only sent to forecast.by.vincent.mahn.ke to render the map and are not shared otherwise.\n\nOn the next screen choose “Allow all the time”.</string>
     <string name="disclosure_accept">Continue</string>

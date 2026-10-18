@@ -9,6 +9,7 @@ import androidx.core.net.toUri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.format.Formatter
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -17,6 +18,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.text.DateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Date
 
 /**
@@ -110,6 +115,35 @@ class SetupActivity : ComponentActivity() {
             prefs.lastError ?: getString(R.string.status_no_error),
             if (prefs.latitude != null) "%.4f, %.4f".format(prefs.latitude, prefs.longitude) else getString(R.string.status_never),
         )
+        updateUsage()
+    }
+
+    private fun updateUsage() {
+        val usage = DataUsageLog.forContext(this)
+        fun size(bytes: Long) = Formatter.formatShortFileSize(this, bytes)
+        val dateTime = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM)
+        val hour = DateTimeFormatter.ofPattern("HH:mm")
+        val day = DateTimeFormatter.ofPattern("EEE dd.MM.")
+        val zone = ZoneId.systemDefault()
+        val recent = usage.recent()
+        val hourly = usage.hourly()
+        val daily = usage.daily()
+        findViewById<TextView>(R.id.usage_text).text = buildString {
+            appendLine(getString(R.string.usage_recent))
+            if (recent.isEmpty()) appendLine("  " + getString(R.string.usage_none))
+            recent.forEach {
+                val at = Instant.ofEpochMilli(it.at).atZone(zone)
+                appendLine("  %s  %9s  z%d".format(dateTime.format(at), size(it.bytes), it.zoom))
+            }
+            appendLine()
+            appendLine(getString(R.string.usage_hourly, size(hourly.sumOf { it.bytes })))
+            hourly.asReversed().forEach {
+                appendLine("  %s  %9s".format(hour.format(Instant.ofEpochMilli(it.start).atZone(zone)), size(it.bytes)))
+            }
+            appendLine()
+            appendLine(getString(R.string.usage_daily, size(daily.sumOf { it.bytes })))
+            daily.asReversed().forEach { appendLine("  %s  %9s".format(day.format(it.date), size(it.bytes))) }
+        }.trimEnd()
     }
 
     private fun setStep(stateId: Int, buttonId: Int, done: Boolean, hideButtonWhenDone: Boolean = true, enabled: Boolean = true) {
