@@ -17,6 +17,19 @@ class FrameTimelineTest {
     }
 
     @Test
+    fun everyFrameIsExactlyOneMinuteAfterThePrevious() {
+        val footer = ForecastFooter(ZoneId.of("Europe/Berlin"))
+        for (index in 0..90) {
+            assertEquals("frame $index", start + index * 60_000L, timeline.timeAt(index))
+            assertEquals(
+                "frame $index",
+                footer.format(start + index * 60_000L),
+                footer.format(timeline.timeAt(index)),
+            )
+        }
+    }
+
+    @Test
     fun progressRunsFromZeroToOne() {
         assertEquals(0f, timeline.progressAt(0))
         assertEquals(0.5f, timeline.progressAt(45))

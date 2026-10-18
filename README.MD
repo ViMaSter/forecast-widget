@@ -66,6 +66,9 @@ How a refresh happens:
    - decodes the 91 frames (one per minute) to PNG with `MediaMetadataRetriever` and draws the time box
      onto each one. Frame `i` shows `start + i/90 × (end − start)` from the `X-Forecast-Start`/`-End`
      headers in the device's time zone, with a progress bar from 0% to 100%. Then it updates all widgets.
+     The footerless video is kept, because without rain movement the next render is byte-identical: the
+     server answers `304 Not Modified`, but its new `X-Forecast-Start`/`-End` still move the times 5 minutes
+     on, so the app redraws the footer from the stored video without downloading again.
    - records the size of every downloaded forecast. The app's **Data usage** section shows the last 5
      downloads, hourly totals for the past 24 hours and daily totals for the past 30 days. `304 Not Modified`
      responses carry no forecast and are not counted.

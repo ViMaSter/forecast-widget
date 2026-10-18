@@ -13,7 +13,13 @@ data class FrameTimeline(val startMs: Long, val endMs: Long, val frameCount: Int
     fun progressAt(index: Int): Float =
         if (frameCount <= 1) 1f else (index.toFloat() / (frameCount - 1)).coerceIn(0f, 1f)
 
-    fun timeAt(index: Int): Long = startMs + ((endMs - startMs) * progressAt(index).toDouble()).toLong()
+    // Integer maths with rounding: a float fraction can land just below a minute boundary and repeat/skip minutes.
+    fun timeAt(index: Int): Long {
+        if (frameCount <= 1) return endMs
+        val steps = (frameCount - 1).toLong()
+        val clamped = index.coerceIn(0, frameCount - 1).toLong()
+        return startMs + Math.floorDiv((endMs - startMs) * clamped * 2 + steps, steps * 2)
+    }
 }
 
 /**

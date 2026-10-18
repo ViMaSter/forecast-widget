@@ -7,7 +7,8 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 sealed interface FetchResult {
-    data object NotModified : FetchResult
+    /** A 304 still reports the current [start]/[end], which move every 5 minutes even if the video does not. */
+    data class NotModified(val start: Long? = null, val end: Long? = null) : FetchResult
     /** [footerless] videos need the time box drawn by the app, using [start]/[end] (epoch ms) of the first/last frame. */
     class Video(
         val bytes: ByteArray,
@@ -31,7 +32,12 @@ class ForecastFetcher(
             .apply { if (etag != null) header("If-None-Match", etag) }
             .build()
         client.newCall(request).execute().use { response ->
-            if (response.code == 304) return FetchResult.NotModified
+            if (response.code == 304) {
+                return FetchResult.NotModified(
+                    start = response.header("x-forecast-start")?.let(::parseInstant),
+                    end = response.header("x-forecast-end")?.let(::parseInstant),
+                )
+            }
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val contentType = response.header("Content-Type").orEmpty()
             if (!contentType.startsWith("video/mp4")) throw IOException("Unexpected content type $contentType")

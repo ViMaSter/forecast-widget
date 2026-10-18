@@ -40,9 +40,14 @@ class ForecastFetcherTest {
 
     @Test
     fun sendsEtagAndHandlesNotModified() {
-        server.enqueue(MockResponse.Builder().code(304).build())
+        server.enqueue(
+            MockResponse.Builder().code(304)
+                .addHeader("X-Forecast-Start", "2026-10-18T21:45:00.000Z")
+                .addHeader("X-Forecast-End", "2026-10-18T23:15:00.000Z")
+                .build(),
+        )
         val result = fetcher.fetch(server.url("/forecast").toString(), "\"abc\"")
-        assertEquals(FetchResult.NotModified, result)
+        assertEquals(FetchResult.NotModified(1792359900000L, 1792365300000L), result)
         assertEquals("\"abc\"", server.takeRequest().headers["If-None-Match"])
     }
 

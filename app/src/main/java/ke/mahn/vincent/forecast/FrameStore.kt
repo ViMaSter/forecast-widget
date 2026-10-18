@@ -21,6 +21,32 @@ class FrameStore(context: Context) {
      * With [footerRange] (epoch ms of the first and last frame) the time box is drawn onto each frame.
      */
     fun saveVideo(zoom: Int, video: ByteArray, footerRange: Pair<Long, Long>? = null): Int {
+        val frameCount = decodeVideo(zoom, video, footerRange)
+        val zoomDir = File(root, "z$zoom")
+        if (footerRange != null) {
+            // Kept so that a 304 with a moved time range can redraw the footer without downloading again.
+            File(zoomDir, FOOTERLESS_VIDEO).writeBytes(video)
+            File(zoomDir, FOOTER_RANGE).writeText("${footerRange.first},${footerRange.second}")
+        } else {
+            File(zoomDir, FOOTERLESS_VIDEO).delete()
+            File(zoomDir, FOOTER_RANGE).delete()
+        }
+        return frameCount
+    }
+
+    fun canRedrawFooter(zoom: Int): Boolean = File(File(root, "z$zoom"), FOOTERLESS_VIDEO).exists()
+
+    /** Redraws the footer of the stored footerless video for a new time range; returns whether frames changed. */
+    fun redrawFooter(zoom: Int, start: Long, end: Long): Boolean {
+        val zoomDir = File(root, "z$zoom")
+        val video = File(zoomDir, FOOTERLESS_VIDEO).takeIf { it.exists() } ?: return false
+        val current = File(zoomDir, FOOTER_RANGE).takeIf { it.exists() }?.readText()
+        if (current == "$start,$end") return false
+        saveVideo(zoom, video.readBytes(), start to end)
+        return true
+    }
+
+    private fun decodeVideo(zoom: Int, video: ByteArray, footerRange: Pair<Long, Long>?): Int {
         val videoFile = File.createTempFile("forecast", ".mp4", appContext.cacheDir)
         val retriever = MediaMetadataRetriever()
         try {
@@ -110,6 +136,8 @@ class FrameStore(context: Context) {
 
     companion object {
         private const val VIDEO_DECODE_BATCH = 8
+        private const val FOOTERLESS_VIDEO = "footerless.mp4"
+        private const val FOOTER_RANGE = "footer-range"
 
         fun rootDir(context: Context) = File(context.filesDir, "frames")
     }
