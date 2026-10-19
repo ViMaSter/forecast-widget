@@ -70,7 +70,7 @@ How a refresh happens:
      server answers `304 Not Modified`, but its new `X-Forecast-Start`/`-End` still move the times 5 minutes
      on, so the app redraws the footer from the stored video without downloading again.
    - records the data used by every request: request and response headers plus the body, so
-     `304 Not Modified` revalidations count their roughly 1 KB of headers (shown as "unchanged"). The
+     `304 Not Modified` revalidations count their roughly 1 KB of headers (marked "304"). The
      app's **Data usage** section shows the last 5 requests, hourly totals for the past 24 hours and daily
      totals for the past 30 days. Header sizes are approximate, since HTTP/2 compresses them on the wire.
 4. Safety nets:

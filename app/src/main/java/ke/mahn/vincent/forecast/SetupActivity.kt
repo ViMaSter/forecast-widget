@@ -21,7 +21,6 @@ import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Date
 
 /**
@@ -121,7 +120,7 @@ class SetupActivity : ComponentActivity() {
     private fun updateUsage() {
         val usage = DataUsageLog.forContext(this)
         fun size(bytes: Long) = Formatter.formatShortFileSize(this, bytes)
-        val dateTime = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM)
+        val dateTime = DateTimeFormatter.ofPattern("dd.MM. HH:mm:ss")
         val hour = DateTimeFormatter.ofPattern("HH:mm")
         val day = DateTimeFormatter.ofPattern("EEE dd.MM.")
         val zone = ZoneId.systemDefault()
