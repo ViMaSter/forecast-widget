@@ -32,7 +32,8 @@
     <string name="status_refreshing">Refreshing…</string>
 
     <string name="usage_title">Data usage</string>
-    <string name="usage_recent">Last 5 downloads</string>
+    <string name="usage_recent">Last 5 requests</string>
+    <string name="usage_not_modified">unchanged</string>
     <string name="usage_hourly">Past 24 hours: %1$s</string>
     <string name="usage_daily">Past 30 days: %1$s</string>
     <string name="usage_none">No downloads recorded yet</string>

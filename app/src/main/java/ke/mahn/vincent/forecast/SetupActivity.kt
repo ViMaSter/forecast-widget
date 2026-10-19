@@ -133,7 +133,8 @@ class SetupActivity : ComponentActivity() {
             if (recent.isEmpty()) appendLine("  " + getString(R.string.usage_none))
             recent.forEach {
                 val at = Instant.ofEpochMilli(it.at).atZone(zone)
-                appendLine("  %s  %9s  z%d".format(dateTime.format(at), size(it.bytes), it.zoom))
+                val status = if (it.notModified) getString(R.string.usage_not_modified) else ""
+                appendLine("  %s  %9s  z%d %s".format(dateTime.format(at), size(it.bytes), it.zoom, status).trimEnd())
             }
             appendLine()
             appendLine(getString(R.string.usage_hourly, size(hourly.sumOf { it.bytes })))

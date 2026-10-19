@@ -8,7 +8,7 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * Records the size of every downloaded forecast. Keeps the last [RECENT_COUNT] downloads,
+ * Records the data used by every forecast request, including `304 Not Modified` revalidations. Keeps the last [RECENT_COUNT] downloads,
  * hourly totals for the past 24 hours and daily totals for the past 30 days in a small text file.
  */
 class DataUsageLog(
@@ -16,7 +16,8 @@ class DataUsageLog(
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val now: () -> Long = System::currentTimeMillis,
 ) {
-    data class Download(val at: Long, val bytes: Long, val zoom: Int)
+    /** [notModified] marks a `304` revalidation: only headers were transferred. */
+    data class Download(val at: Long, val bytes: Long, val zoom: Int, val notModified: Boolean = false)
     data class Bucket(val start: Long, val bytes: Long)
     data class DayBucket(val date: LocalDate, val bytes: Long)
 
@@ -26,15 +27,18 @@ class DataUsageLog(
         val daily: Map<LocalDate, Long>,
     )
 
+    fun record(result: FetchResult, zoom: Int) =
+        record(result.transferBytes, zoom, notModified = result is FetchResult.NotModified)
+
     @Synchronized
-    fun record(bytes: Long, zoom: Int) {
+    fun record(bytes: Long, zoom: Int, notModified: Boolean = false) {
         val at = now()
         val state = load()
         val hour = hourStart(at)
         val day = Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
         save(
             State(
-                recent = (listOf(Download(at, bytes, zoom)) + state.recent).take(RECENT_COUNT),
+                recent = (listOf(Download(at, bytes, zoom, notModified)) + state.recent).take(RECENT_COUNT),
                 hourly = state.hourly + (hour to (state.hourly[hour] ?: 0) + bytes),
                 daily = state.daily + (day to (state.daily[day] ?: 0) + bytes),
             ),
@@ -77,7 +81,7 @@ class DataUsageLog(
                 val parts = line.split(',')
                 runCatching {
                     when (parts[0]) {
-                        "r" -> recent += Download(parts[1].toLong(), parts[2].toLong(), parts[3].toInt())
+                        "r" -> recent += Download(parts[1].toLong(), parts[2].toLong(), parts[3].toInt(), parts.getOrNull(4) == "304")
                         "h" -> hourly[parts[1].toLong()] = parts[2].toLong()
                         "d" -> daily[LocalDate.parse(parts[1])] = parts[2].toLong()
                     }
@@ -91,7 +95,7 @@ class DataUsageLog(
         val oldestHour = hourStart(now()) - (HOURS - 1) * HOUR_MS
         val oldestDay = Instant.ofEpochMilli(now()).atZone(zone).toLocalDate().minusDays(DAYS - 1L)
         val text = buildString {
-            state.recent.forEach { appendLine("r,${it.at},${it.bytes},${it.zoom}") }
+            state.recent.forEach { appendLine("r,${it.at},${it.bytes},${it.zoom},${if (it.notModified) 304 else 200}") }
             state.hourly.filterKeys { it >= oldestHour }.toSortedMap().forEach { (start, bytes) -> appendLine("h,$start,$bytes") }
             state.daily.filterKeys { !it.isBefore(oldestDay) }.toSortedMap().forEach { (date, bytes) -> appendLine("d,$date,$bytes") }
         }

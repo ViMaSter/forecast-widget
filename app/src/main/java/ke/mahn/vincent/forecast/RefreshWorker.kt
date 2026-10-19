@@ -58,12 +58,12 @@ class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         // Only revalidate when a 304 can be handled, i.e. the footer can be redrawn for the new time range.
         val etag = if (store.hasFrames(zoom) && store.canRedrawFooter(zoom)) prefs.etag(zoom, url) else null
         var result = fetcher.fetch(url, etag)
-        if (result is FetchResult.Video) usage.record(result.bytes.size.toLong(), zoom)
+        usage.record(result, zoom)
         if (result is FetchResult.Video && result.stale) {
             // Server is still rendering this interval; give it a moment and ask again.
             delay(STALE_RETRY_DELAY_MS)
             result = fetcher.fetch(url, null)
-            if (result is FetchResult.Video) usage.record(result.bytes.size.toLong(), zoom)
+            usage.record(result, zoom)
         }
         if (result is FetchResult.NotModified && result.start != null) {
             // Same footerless video, but its frames now stand for a later time range.

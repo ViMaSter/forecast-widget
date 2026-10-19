@@ -47,7 +47,10 @@ class ForecastFetcherTest {
                 .build(),
         )
         val result = fetcher.fetch(server.url("/forecast").toString(), "\"abc\"")
-        assertEquals(FetchResult.NotModified(1792359900000L, 1792365300000L), result)
+        result as FetchResult.NotModified
+        assertEquals(1792359900000L, result.start)
+        assertEquals(1792365300000L, result.end)
+        assertTrue("headers are counted", result.transferBytes > 100)
         assertEquals("\"abc\"", server.takeRequest().headers["If-None-Match"])
     }
 

@@ -62,4 +62,21 @@ class DataUsageLogTest {
         assertEquals(21L, log().daily().sumOf { it.bytes })
         assertEquals(false, folder.root.resolve("usage.csv").readText().contains("2026-10-18"))
     }
+
+    @Test
+    fun recordsNotModifiedRevalidations() {
+        log().record(FetchResult.NotModified(transferBytes = 900), 100)
+        log().record(FetchResult.Video(ByteArray(5000), null, stale = false, transferBytes = 5900), 100)
+        val recent = log().recent()
+        assertEquals(listOf(5900L, 900L), recent.map { it.bytes })
+        assertEquals(listOf(false, true), recent.map { it.notModified })
+    }
+
+    @Test
+    fun readsLinesWithoutStatus() {
+        val file = folder.root.resolve("usage.csv")
+        file.writeText("r,$now,123,100\n")
+        val recent = DataUsageLog(file, zone) { now }.recent()
+        assertEquals(listOf(DataUsageLog.Download(now, 123, 100, false)), recent)
+    }
 }
