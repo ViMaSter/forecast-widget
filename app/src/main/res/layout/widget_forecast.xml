@@ -3,8 +3,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:clipToOutline="true">
+    android:background="@android:color/transparent">
 
     <ViewFlipper
         android:id="@+id/flipper"
@@ -23,17 +22,4 @@
         android:textColor="#FFFFFF"
         android:textSize="13sp" />
 
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_margin="6dp"
-        android:background="#99FFFFFF"
-        android:paddingHorizontal="4dp"
-        android:text="@string/widget_outdated"
-        android:contentDescription="@string/widget_outdated_description"
-        android:textColor="#172229"
-        android:textSize="11sp"
-        android:visibility="gone" />
 </FrameLayout>

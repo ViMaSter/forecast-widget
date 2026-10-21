@@ -2,13 +2,15 @@
     <string name="app_name">Forecast</string>
     <string name="widget_description">Animated rain radar for your current location, refreshed every 5 minutes.</string>
     <string name="widget_loading">Loading forecast…</string>
-    <string name="widget_outdated" translatable="false">⚠</string>
-    <string name="widget_outdated_description">Last refresh failed, showing older forecast</string>
     <string name="error_no_location">No location yet – open the app to set up</string>
     <string name="error_refresh">Refresh failed: %1$s</string>
 
     <string name="setup_title">Forecast widget setup</string>
     <string name="setup_intro">Complete these steps once. Afterwards the widget refreshes every 5 minutes in the background without further interaction.</string>
+    <string name="zoom_title">Forecast zoom</string>
+    <string name="zoom_description">Auto follows widget size (the current default). Choose a fixed zoom to override it; 2 shows the widest area.</string>
+    <string name="zoom_auto">Auto (widget size)</string>
+    <string name="zoom_level">Zoom %1$d</string>
     <string name="step_done">✅</string>
     <string name="step_todo">⬜</string>
     <string name="step_location_title">Location</string>
@@ -26,9 +28,8 @@
     <string name="action_add_widget">Add widget</string>
     <string name="action_refresh">Refresh now</string>
     <string name="status_title">Status</string>
-    <string name="status_template">Widgets: %1$d\nLast update: %2$s\nNext refresh: %3$s\nLast error: %4$s\nPosition: %5$s</string>
+    <string name="status_template">Widgets: %1$d\nLast update: %2$s\nNext refresh: %3$s\nPosition: %4$s</string>
     <string name="status_never">–</string>
-    <string name="status_no_error">none</string>
     <string name="status_refreshing">Refreshing…</string>
 
     <string name="usage_title">Data usage</string>

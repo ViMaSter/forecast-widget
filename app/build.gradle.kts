@@ -12,6 +12,12 @@ android {
         targetSdk = 36
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField(
+            "String",
+            "FORECAST_SERVER_URL",
+            "\"${providers.gradleProperty("forecastServerUrl").orElse("https://forecast.by.vincent.mahn.ke").get()}\"",
+        )
     }
 
     signingConfigs {
@@ -63,4 +69,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.junit)
 }

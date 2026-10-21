@@ -20,6 +20,11 @@ class ForecastConfigTest {
     }
 
     @Test
+    fun fixedZoomChoicesIncludeWidelyZoomedOutAndRadarResolutions() {
+        assertEquals(listOf(2, 7, 10, 25, 50, 75, 100), ForecastConfig.ZOOM_LEVELS)
+    }
+
+    @Test
     fun pixelLauncherSizesMapToExpectedCells() {
         val pixel9Pro = 426 // smallest screen width in dp
         // Reported portrait sizes (min width × max height) from Pixel Launcher.
@@ -39,12 +44,16 @@ class ForecastConfigTest {
     @Test
     fun forecastUrlPutsLongitudeInXAndLatitudeInY() {
         assertEquals(
-            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=100&theme=light&noFooter=1",
+            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=100&theme=light&noFooter=1&alpha=1",
             ForecastConfig.forecastUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 100),
         )
         assertEquals(
-            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=50&theme=dark&noFooter=1",
-            ForecastConfig.forecastUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 50, dark = true),
+            "https://forecast.by.vincent.mahn.ke/alpha?x=9.9500&y=53.5586&zoom=2&theme=light",
+            ForecastConfig.alphaMaskUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 2),
+        )
+        assertEquals(
+            "https://forecast.by.vincent.mahn.ke/forecast?x=9.9500&y=53.5586&zoom=2&theme=light&noFooter=1",
+            ForecastConfig.legacyForecastUrl(latitude = 53.5585528, longitude = 9.9500347, zoom = 2),
         )
     }
 

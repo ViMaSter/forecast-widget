@@ -2,6 +2,7 @@ package ke.mahn.vincent.forecast
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import java.io.File
@@ -15,6 +16,8 @@ import java.io.IOException
 class FrameStore(context: Context) {
     private val appContext = context.applicationContext
     private val root = rootDir(appContext)
+
+    data class AlphaVideos(val color: ByteArray, val mask: ByteArray)
 
     /**
      * Decodes every frame of the forecast MP4 (AV1) with the platform's media decoders.
@@ -32,6 +35,45 @@ class FrameStore(context: Context) {
             File(zoomDir, FOOTER_RANGE).delete()
         }
         return frameCount
+    }
+
+    fun saveAlphaVideos(
+        zoom: Int,
+        colorVideo: ByteArray,
+        maskVideo: ByteArray,
+        footerRange: Pair<Long, Long>,
+        palette: RainPalette,
+    ): Int = decodeAlphaVideos(zoom, colorVideo, maskVideo, footerRange, palette)
+
+    /** Re-renders cached alpha videos when the time range or theme palette changed; returns whether frames changed. */
+    fun rerenderAlpha(zoom: Int, start: Long, end: Long, palette: RainPalette): Boolean {
+        val dir = latestDir(zoom) ?: return false
+        if (File(dir, RENDER_KEY).takeIf { it.isFile }?.readText() == renderKey(start to end, palette)) return false
+        val videos = alphaVideos(zoom) ?: return false
+        saveAlphaVideos(zoom, videos.color, videos.mask, start to end, palette)
+        return true
+    }
+
+    /** Whether any cached alpha forecast (optionally only of [zooms]) was rendered with a different theme palette. */
+    fun hasStalePalette(palette: RainPalette, zooms: Set<Int>? = null): Boolean =
+        root.listFiles().orEmpty().mapNotNull { zoomDir ->
+            zoomDir.name.removePrefix("z").toIntOrNull()
+                ?.takeIf { zooms == null || it in zooms }
+                ?.let(::latestDir)
+        }.any { dir ->
+            val key = File(dir, RENDER_KEY)
+            key.isFile && !key.readText().endsWith("|${palette.key}")
+        }
+
+    private fun renderKey(footerRange: Pair<Long, Long>, palette: RainPalette) =
+        "${footerRange.first},${footerRange.second}|${palette.key}"
+
+    fun alphaVideos(zoom: Int): AlphaVideos? {
+        val dir = latestDir(zoom) ?: return null
+        val color = File(dir, ALPHA_COLOR_VIDEO)
+        val mask = File(dir, ALPHA_MASK_VIDEO)
+        if (!color.isFile || !mask.isFile) return null
+        return AlphaVideos(color.readBytes(), mask.readBytes())
     }
 
     fun canRedrawFooter(zoom: Int): Boolean = File(File(root, "z$zoom"), FOOTERLESS_VIDEO).exists()
@@ -76,6 +118,114 @@ class FrameStore(context: Context) {
             retriever.release()
             videoFile.delete()
         }
+    }
+
+    private fun decodeAlphaVideos(
+        zoom: Int,
+        colorVideo: ByteArray,
+        maskVideo: ByteArray,
+        footerRange: Pair<Long, Long>,
+        palette: RainPalette,
+    ): Int {
+        val colorFile = File.createTempFile("forecast-color", ".mp4", appContext.cacheDir)
+        val maskFile = File.createTempFile("forecast-mask", ".mp4", appContext.cacheDir)
+        val colorRetriever = MediaMetadataRetriever()
+        val maskRetriever = MediaMetadataRetriever()
+        try {
+            colorFile.writeBytes(colorVideo)
+            maskFile.writeBytes(maskVideo)
+            colorRetriever.setDataSource(colorFile.path)
+            maskRetriever.setDataSource(maskFile.path)
+            val colorCount = videoFrameCount(colorRetriever)
+            val maskCount = videoFrameCount(maskRetriever)
+            if (colorCount != maskCount) throw IOException("Rain and alpha videos have different frame counts")
+            return publishFrames(zoom) { tmpDir ->
+                var hasVisibleRain = false
+                for (start in 0 until colorCount step VIDEO_DECODE_BATCH) {
+                    val count = minOf(VIDEO_DECODE_BATCH, colorCount - start)
+                    val colors = colorRetriever.getFramesAtIndex(start, count)
+                    val masks = maskRetriever.getFramesAtIndex(start, count)
+                    try {
+                        if (colors.size != count || masks.size != count) {
+                            throw IOException("Rain and alpha videos did not decode all requested frames")
+                        }
+                        colors.indices.forEach { offset ->
+                            val color = colors[offset]
+                            val mask = masks[offset]
+                            if (color.width != mask.width || color.height != mask.height) {
+                                throw IOException("Rain and alpha frames have different dimensions")
+                            }
+                            val frame = applyAlphaMask(color, mask, palette)
+                            try {
+                                if (!hasVisibleRain) hasVisibleRain = hasVisiblePixels(frame)
+                                writeFrame(tmpDir, start + offset, frame)
+                            } finally {
+                                frame.recycle()
+                            }
+                        }
+                    } finally {
+                        colors.forEach(Bitmap::recycle)
+                        masks.forEach(Bitmap::recycle)
+                    }
+                }
+                // Decide for the whole forecast before adding a footer to any frame.
+                if (hasVisibleRain) {
+                    val timeline = FrameTimeline(footerRange.first, footerRange.second, colorCount)
+                    val footer = ForecastFooter()
+                    for (index in 0 until colorCount) {
+                        val decoded = BitmapFactory.decodeFile(File(tmpDir, frameName(index)).path)
+                            ?: throw IOException("Failed to read alpha frame $index")
+                        try {
+                            val frame = footer.draw(decoded, timeline.timeAt(index), timeline.progressAt(index))
+                            try {
+                                writeFrame(tmpDir, index, frame)
+                            } finally {
+                                if (frame !== decoded) frame.recycle()
+                            }
+                        } finally {
+                            decoded.recycle()
+                        }
+                    }
+                }
+                File(tmpDir, ALPHA_COLOR_VIDEO).writeBytes(colorVideo)
+                File(tmpDir, ALPHA_MASK_VIDEO).writeBytes(maskVideo)
+                File(tmpDir, RENDER_KEY).writeText(renderKey(footerRange, palette))
+                colorCount
+            }
+        } finally {
+            colorRetriever.release()
+            maskRetriever.release()
+            colorFile.delete()
+            maskFile.delete()
+        }
+    }
+
+    private fun videoFrameCount(retriever: MediaMetadataRetriever): Int =
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)
+            ?.toIntOrNull()?.takeIf { it > 0 } ?: throw IOException("Video has no frames")
+
+    private fun applyAlphaMask(color: Bitmap, mask: Bitmap, palette: RainPalette): Bitmap {
+        val width = color.width
+        val height = color.height
+        val colorPixels = IntArray(width * height)
+        val maskPixels = IntArray(width * height)
+        val outputPixels = IntArray(width * height)
+        color.getPixels(colorPixels, 0, width, 0, 0, width, height)
+        mask.getPixels(maskPixels, 0, width, 0, 0, width, height)
+        for (index in outputPixels.indices) {
+            val opacity = (maskPixels[index] ushr 16) and 0xff
+            outputPixels[index] = palette.recolorPremultiplied(colorPixels[index] and 0x00ffffff, opacity)
+        }
+        return Bitmap.createBitmap(outputPixels, width, height, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun hasVisiblePixels(frame: Bitmap): Boolean {
+        val row = IntArray(frame.width)
+        for (y in 0 until frame.height) {
+            frame.getPixels(row, 0, frame.width, 0, y, frame.width, 1)
+            if (row.any { it ushr 24 != 0 }) return true
+        }
+        return false
     }
 
     private fun publishFrames(zoom: Int, writeFrames: (File) -> Int): Int {
@@ -138,6 +288,9 @@ class FrameStore(context: Context) {
         private const val VIDEO_DECODE_BATCH = 8
         private const val FOOTERLESS_VIDEO = "footerless.mp4"
         private const val FOOTER_RANGE = "footer-range"
+        private const val ALPHA_COLOR_VIDEO = "alpha-color.mp4"
+        private const val ALPHA_MASK_VIDEO = "alpha-mask.mp4"
+        private const val RENDER_KEY = "render-key"
 
         fun rootDir(context: Context) = File(context.filesDir, "frames")
     }

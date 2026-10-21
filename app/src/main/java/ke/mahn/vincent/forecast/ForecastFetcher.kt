@@ -22,11 +22,16 @@ sealed interface FetchResult {
         val etag: String?,
         val stale: Boolean,
         val footerless: Boolean = false,
+        val alpha: Boolean = false,
+        val alphaMask: Boolean = false,
+        val frames: Int? = null,
         val start: Long? = null,
         val end: Long? = null,
         override val transferBytes: Long = bytes.size.toLong(),
     ) : FetchResult
 }
+
+class ForecastHttpException(val statusCode: Int) : IOException("HTTP $statusCode")
 
 class ForecastFetcher(
     private val client: OkHttpClient = defaultClient,
@@ -48,7 +53,7 @@ class ForecastFetcher(
                     transferBytes = headerBytes,
                 )
             }
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (!response.isSuccessful) throw ForecastHttpException(response.code)
             val contentType = response.header("Content-Type").orEmpty()
             if (!contentType.startsWith("video/mp4")) throw IOException("Unexpected content type $contentType")
             val bytes = response.body.bytes()
@@ -57,6 +62,9 @@ class ForecastFetcher(
                 etag = response.header("ETag"),
                 stale = response.header("x-forecast-stale") == "true",
                 footerless = response.header("x-forecast-no-footer") == "1",
+                alpha = response.header("x-forecast-alpha") == "1",
+                alphaMask = response.header("x-forecast-alpha-mask") == "1",
+                frames = response.header("x-forecast-frames")?.toIntOrNull(),
                 start = response.header("x-forecast-start")?.let(::parseInstant),
                 end = response.header("x-forecast-end")?.let(::parseInstant),
                 transferBytes = headerBytes + bytes.size,

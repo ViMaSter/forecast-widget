@@ -28,6 +28,9 @@ class ForecastFetcherTest {
                 .addHeader("Content-Type", "video/mp4")
                 .addHeader("ETag", "\"abc\"")
                 .addHeader("x-forecast-stale", "true")
+                .addHeader("x-forecast-alpha", "1")
+                .addHeader("x-forecast-alpha-mask", "1")
+                .addHeader("x-forecast-frames", "91")
                 .body("ftyp")
                 .build(),
         )
@@ -35,6 +38,9 @@ class ForecastFetcherTest {
         assertArrayEquals("ftyp".toByteArray(), result.bytes)
         assertEquals("\"abc\"", result.etag)
         assertTrue(result.stale)
+        assertTrue(result.alpha)
+        assertTrue(result.alphaMask)
+        assertEquals(91, result.frames)
         assertEquals(null, server.takeRequest().headers["If-None-Match"])
     }
 
@@ -90,6 +96,18 @@ class ForecastFetcherTest {
     fun serverErrorThrows() {
         server.enqueue(MockResponse.Builder().code(502).build())
         fetcher.fetch(server.url("/forecast").toString(), null)
+    }
+
+    @Test
+    fun notFoundPreservesHttpStatusForCompatibilityFallback() {
+        server.enqueue(MockResponse.Builder().code(404).build())
+        try {
+            fetcher.fetch(server.url("/alpha").toString(), null)
+        } catch (e: ForecastHttpException) {
+            assertEquals(404, e.statusCode)
+            return
+        }
+        throw AssertionError("Expected a typed HTTP 404 exception")
     }
 
     @Test(expected = IOException::class)

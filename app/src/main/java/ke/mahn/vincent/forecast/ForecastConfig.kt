@@ -5,10 +5,12 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 object ForecastConfig {
-    const val BASE_URL = "https://forecast.by.vincent.mahn.ke/forecast"
+    const val BASE_URL = "${BuildConfig.FORECAST_SERVER_URL}/forecast"
+    const val ALPHA_URL = "${BuildConfig.FORECAST_SERVER_URL}/alpha"
 
     const val MIN_ZOOM = 10
     const val MAX_ZOOM = 100
+    const val MIN_SERVER_ZOOM = 2
 
     /** Server regenerates forecasts on 5-minute clock boundaries. */
     const val REFRESH_INTERVAL_MS = 5 * 60 * 1000L
@@ -24,6 +26,7 @@ object ForecastConfig {
 
     /** Phone launchers (Pixel, Samsung, …) default to a 4-column home-screen grid. */
     const val GRID_COLUMNS = 4
+    val ZOOM_LEVELS = listOf(2, 7, 10, 25, 50, 75, 100)
 
     /** Launcher rows are slightly taller than columns are wide. */
     const val ROW_TO_COLUMN_RATIO = 1.1
@@ -43,10 +46,22 @@ object ForecastConfig {
         return zoomForCells(max(columns, rows))
     }
 
-    fun forecastUrl(latitude: Double, longitude: Double, zoom: Int, dark: Boolean = false): String =
+    fun forecastUrl(latitude: Double, longitude: Double, zoom: Int): String =
         String.format(
-            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=%s&noFooter=1",
-            BASE_URL, longitude, latitude, zoom, if (dark) "dark" else "light",
+            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=light&noFooter=1&alpha=1",
+            BASE_URL, longitude, latitude, zoom,
+        )
+
+    fun legacyForecastUrl(latitude: Double, longitude: Double, zoom: Int): String =
+        String.format(
+            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=light&noFooter=1",
+            BASE_URL, longitude, latitude, zoom,
+        )
+
+    fun alphaMaskUrl(latitude: Double, longitude: Double, zoom: Int): String =
+        String.format(
+            Locale.ROOT, "%s?x=%.4f&y=%.4f&zoom=%d&theme=light",
+            ALPHA_URL, longitude, latitude, zoom,
         )
 
     /** Next 5-minute clock boundary plus [REFRESH_OFFSET_MS], always at least 5 s in the future. */

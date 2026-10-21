@@ -12,6 +12,9 @@ import android.provider.Settings
 import android.text.format.Formatter
 import android.view.View
 import android.widget.Button
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -65,11 +68,15 @@ class SetupActivity : ComponentActivity() {
             RefreshScheduler.refreshNow(this)
             findViewById<TextView>(R.id.status_text).text = getString(R.string.status_refreshing)
         }
+        setupZoomSelector()
     }
 
     override fun onResume() {
         super.onResume()
         RefreshScheduler.ensureScheduled(this)
+        // Theme color changes don't notify widgets, so re-render once the user comes back here.
+        val zooms = WidgetRenderer.activeZooms(this)
+        if (FrameStore(this).hasStalePalette(RainPalette.fromTheme(this), zooms)) RefreshScheduler.refreshNow(this)
         updateStatus()
     }
 
@@ -83,6 +90,34 @@ class SetupActivity : ComponentActivity() {
             }
             .setNegativeButton(R.string.disclosure_decline, null)
             .show()
+    }
+
+    private fun setupZoomSelector() {
+        val spinner = findViewById<Spinner>(R.id.zoom_selector)
+        val labels = listOf(getString(R.string.zoom_auto)) +
+            ForecastConfig.ZOOM_LEVELS.map { getString(R.string.zoom_level, it) }
+        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        val currentZoom = Prefs(this).zoomOverride
+        spinner.setSelection(currentZoom?.let { ForecastConfig.ZOOM_LEVELS.indexOf(it) + 1 } ?: 0)
+
+        var initialSelection = true
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (initialSelection) {
+                    initialSelection = false
+                    return
+                }
+                val selectedZoom = ForecastConfig.ZOOM_LEVELS.getOrNull(position - 1)
+                val prefs = Prefs(this@SetupActivity)
+                if (prefs.zoomOverride != selectedZoom) {
+                    prefs.zoomOverride = selectedZoom
+                    WidgetRenderer.renderAll(this@SetupActivity)
+                    RefreshScheduler.refreshNow(this@SetupActivity)
+                }
+            }
+        }
     }
 
     private fun updateStatus() {
@@ -111,7 +146,6 @@ class SetupActivity : ComponentActivity() {
             widgetCount,
             format(prefs.lastSuccessAt),
             if (widgetCount > 0) format(prefs.nextAlarmAt) else getString(R.string.status_never),
-            prefs.lastError ?: getString(R.string.status_no_error),
             if (prefs.latitude != null) "%.4f, %.4f".format(prefs.latitude, prefs.longitude) else getString(R.string.status_never),
         )
         updateUsage()

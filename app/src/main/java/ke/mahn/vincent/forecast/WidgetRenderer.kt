@@ -15,6 +15,7 @@ object WidgetRenderer {
             .getAppWidgetIds(ComponentName(context, ForecastWidgetProvider::class.java))
 
     fun zoomFor(context: Context, widgetId: Int): Int {
+        Prefs(context).zoomOverride?.let { return it }
         val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
         // Portrait size: min width × max height.
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
@@ -50,15 +51,10 @@ object WidgetRenderer {
 
         val message = when {
             frames.isNotEmpty() -> null
-            prefs.lastError != null -> prefs.lastError
             else -> context.getString(R.string.widget_loading)
         }
         views.setTextViewText(R.id.message, message ?: "")
         views.setViewVisibility(R.id.message, if (message == null) View.GONE else View.VISIBLE)
-
-        // The frames show their own timestamps; only flag that the frames shown are outdated.
-        val outdated = prefs.lastError != null && frames.isNotEmpty()
-        views.setViewVisibility(R.id.status, if (outdated) View.VISIBLE else View.GONE)
 
         val open = PendingIntent.getActivity(
             context, 0,

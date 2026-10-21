@@ -1,18 +1,36 @@
 # forecast-app
 
-Android home-screen widget showing the animated rain-radar forecast from
+Android home-screen widget showing the animated, transparent rain-radar forecast from
 [forecast.by.vincent.mahn.ke](https://forecast.by.vincent.mahn.ke) for the device's current position.
 Once set up, the widget refreshes every 5 minutes in the background, like a calendar widget. You
 don't need to open the app again.
 
 ```
-https://forecast.by.vincent.mahn.ke/forecast?x=<longitude>&y=<latitude>&zoom=<zoom>&theme=<light|dark>
+https://forecast.by.vincent.mahn.ke/forecast?x=<longitude>&y=<latitude>&zoom=<zoom>&theme=light
 ```
 
-`theme` follows the phone's dark-mode setting at each refresh. After you switch dark mode, the widget
-updates at the next 5-minute refresh.
+The app always requests `theme=light` and recolors the rain itself with the phone's Material You
+primary palette (`system_accent1_100` … `system_accent1_800`). Each pixel is projected onto
+WetterOnline's light rain ramp (light cyan → blue → purple → magenta hail) and mapped onto the
+interpolated accent tones, so weak rain uses the lightest tone and heavy rain the darkest. The
+opacity from `/alpha` is kept unchanged. Frames record the palette they were rendered with; after a
+theme color change, the cached videos are recolored without downloading at the next 5-minute refresh,
+or immediately when the app is opened.
+
+The app requests the rain-only AV1 video and its matching `/alpha` opacity-mask video, then combines
+them into transparent PNG frames. The widget itself has no background, so rain-free parts reveal the
+home-screen wallpaper. If the server does not yet provide `/alpha` (HTTP 404), the app falls back to
+the regular opaque forecast until the alpha endpoint is deployed. Launcher-specific widget
+insets/backgrounds may still affect the edge.
+Refresh errors are retained for internal diagnostics but are not shown as a widget warning.
+The app checks the decoded frames for nonzero alpha. If any frame contains visible rain, every frame
+gets the time/progress bar spanning the full forecast range, including dry frames. If the entire
+forecast is transparent, the widget stays completely invisible. A `304` response with a shifted
+time range redraws the bar using the cached videos.
 
 ## Zoom per widget size
+
+By default, zoom continues to follow widget size:
 
 | Widget | Zoom |
 |--------|------|
@@ -25,6 +43,8 @@ updates at the next 5-minute refresh.
 `zoom = clamp(150 − 25·cells, 10, 100)`. Non-square widgets use their larger side. Launchers report
 sizes in dp rather than cells, so cells are estimated from a standard 4-column phone grid. Resizing a
 widget fetches the matching zoom immediately. Several widgets at the same zoom share one download.
+The setup screen can override this with a fixed zoom (2, 7, 10, 25, 50, 75, or 100), or restore
+**Auto (widget size)**. Zoom 2 is the widest view.
 
 ## One-time setup
 
@@ -60,15 +80,10 @@ How a refresh happens:
 3. The worker:
    - gets the location. Background location is throttled to a few fixes per hour, so it falls back
      to the last known and then the last stored position.
-   - downloads the forecast for each zoom in use as an AV1 MP4 (roughly 5–40 KB), with an
-     `If-None-Match` ETag. It requests `noFooter=1`, so the server leaves out the time box: frames then only
-     change where rain moves, which roughly halves the download when there is little rain.
-   - decodes the 91 frames (one per minute) to PNG with `MediaMetadataRetriever` and draws the time box
-     onto each one. Frame `i` shows `start + i/90 × (end − start)` from the `X-Forecast-Start`/`-End`
-     headers in the device's time zone, with a progress bar from 0% to 100%. Then it updates all widgets.
-     The footerless video is kept, because without rain movement the next render is byte-identical: the
-     server answers `304 Not Modified`, but its new `X-Forecast-Start`/`-End` still move the times 5 minutes
-     on, so the app redraws the footer from the stored video without downloading again.
+   - downloads synchronized rain-color and alpha-mask AV1 MP4s (each with its own `If-None-Match`
+     ETag), without the basemap or footer.
+   - decodes and combines their 91 frames (one per minute) into transparent PNGs with
+     `MediaMetadataRetriever`, then updates all widgets.
    - records the data used by every request: request and response headers plus the body, so
      `304 Not Modified` revalidations count their roughly 1 KB of headers (marked "304"). The
      app's **Data usage** section shows the last 5 requests, hourly totals for the past 24 hours and daily
@@ -91,6 +106,28 @@ Requirements: a JDK 17+ (for example Android Studio's bundled JBR) and the Andro
 ./gradlew testDebugUnitTest lintDebug assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
+
+With an emulator connected, `./gradlew connectedDebugAndroidTest` also checks decoded AV1 alpha
+frames: an entirely dry forecast stays invisible, rain in only the last frame adds the time/progress
+bar to every frame, shifted response times redraw the bar from the cached videos, and a different
+theme palette recolors the rain while keeping its opacity.
+The tiny three-frame videos in `app/src/androidTest/assets` are synthetic blue color, black opacity,
+and black/black/white opacity fixtures.
+
+`scripts/theme-screenshots.sh [output-dir]` switches the device's theme seed color through red,
+yellow, green, and blue at 100/75/50/25 % brightness via the
+`theme_customization_overlay_packages` secure setting. After each switch it waits until the widget is
+re-rendered with the new `system_accent1` palette, then stores a widget screenshot, `palettes.tsv`,
+and a 4×4 `grid.png`. The original theme is restored afterwards. It expects a pinned widget whose
+location has rain; set `ANDROID_SERIAL`, `ADB`, `THEME_STYLE` (default `TONAL_SPOT`), or
+`WIDGET_BOUNDS` as needed. With `TONAL_SPOT` the seed brightness does not change the palette, so the
+rows of one hue match.
+
+To test with a virtual location on an emulator, send it to Cologne and pick zoom 2 in the app's
+**Forecast zoom** selector.
+For local service development, the debug build can target a host server with
+`./gradlew assembleDebug -PforecastServerUrl=http://10.0.2.2:3000`; release builds continue to use
+the production server unless explicitly configured otherwise.
 
 Test Doze behaviour:
 

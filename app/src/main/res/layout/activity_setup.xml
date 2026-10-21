@@ -22,6 +22,24 @@
             android:layout_marginTop="8dp"
             android:text="@string/setup_intro" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/zoom_title"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/zoom_description" />
+
+        <Spinner
+            android:id="@+id/zoom_selector"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/zoom_title" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
